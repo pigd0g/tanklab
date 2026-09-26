@@ -373,6 +373,29 @@ label.f-label {
   color: var(--accent);
 }
 
+/* ---- tank card quick test ---- */
+.tankcard-link {
+  cursor: pointer;
+}
+
+.tankcard-link:focus-visible {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: -2px;
+}
+
+.tankcard-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 12px;
+}
+
+.qlog-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+
 /* ---- misc ---- */
 .muted { color: var(--ink-dim); font-size: 13.5px; }
 .faint { color: var(--ink-faint); font-size: 12.5px; }

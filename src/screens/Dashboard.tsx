@@ -5,6 +5,7 @@ import { fmtVolume, fmtTemp, fmtShortDate, fmtNum } from '../lib/utils'
 import { StatusDot, useNow } from '../components/ui'
 import { LogoTile } from '../components/icons'
 import { NewTankForm } from './TankForm'
+import { TestSheet } from './EntrySheets'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -18,6 +19,7 @@ type CardInfo = {
 function TankCard({ info }: { info: CardInfo }) {
   const nav = useNavigate()
   const { units } = useStore()
+  const [testing, setTesting] = useState(false)
   const { tank, status, rem } = info
   const overdue = rem.waterChange.overdue || rem.test.overdue
   const last = status.latest
@@ -25,54 +27,71 @@ function TankCard({ info }: { info: CardInfo }) {
     tank.volumeL ? fmtVolume(tank.volumeL, units) : null,
     last?.waterTemp != null ? fmtTemp(last.waterTemp, units) : null,
   ].filter(Boolean).join(' · ')
+  const open = () => nav(`/tank/${tank.id}`)
   return (
-    <button
-      type="button"
-      className="card"
-      style={{ display: 'block', width: '100%', textAlign: 'left', padding: 0, overflow: 'hidden' }}
-      onClick={() => nav(`/tank/${tank.id}`)}
-    >
-      <div style={{ position: 'relative', height: 92, background: 'linear-gradient(180deg, #10201d, #0b1715)' }}>
-        {tank.photo && (
-          <img
-            src={tank.photo}
-            alt=""
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.55 }}
+    <div className="card tankcard" style={{ display: 'block', width: '100%', padding: 0, overflow: 'hidden' }}>
+      <div
+        role="button"
+        tabIndex={0}
+        className="tankcard-link"
+        onClick={open}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            open()
+          }
+        }}
+      >
+        <div style={{ position: 'relative', height: 132, background: 'linear-gradient(180deg, #10201d, #0b1715)' }}>
+          {tank.photo && (
+            <img
+              src={tank.photo}
+              alt=""
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.55 }}
+            />
+          )}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(8,16,15,0) 0%, rgba(8,16,15,0.85) 100%)',
+            }}
           />
-        )}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'linear-gradient(180deg, rgba(8,16,15,0) 0%, rgba(8,16,15,0.85) 100%)',
-          }}
-        />
-        <div style={{ position: 'absolute', left: 14, right: 14, bottom: 10 }}>
-          <div className="row">
-            <StatusDot status={status.status} />
-            <strong style={{ fontFamily: 'var(--display)', fontSize: 17, letterSpacing: '-0.01em' }}>{tank.name}</strong>
-            <span className="spacer" />
-            <span className="faint">{sub}</span>
+          <div style={{ position: 'absolute', left: 14, right: 14, bottom: 10 }}>
+            <div className="row">
+              <StatusDot status={status.status} />
+              <strong style={{ fontFamily: 'var(--display)', fontSize: 17, letterSpacing: '-0.01em' }}>{tank.name}</strong>
+              <span className="spacer" />
+              <span className="faint">{sub}</span>
+            </div>
           </div>
         </div>
+        <div className="row" style={{ padding: '10px 14px', gap: 8 }}>
+          <span className="faint">{CYCLE_LABEL[info.stage.stage]}</span>
+          {last?.ammonia != null && (
+            <span className="muted" style={{ fontSize: 12.5 }}>
+              NH₃/NH₄⁺ {fmtNum(last.ammonia, 2)}
+            </span>
+          )}
+          {last?.nitrate != null && (
+            <span className="muted" style={{ fontSize: 12.5 }}>
+              NO₃ {fmtNum(last.nitrate, 0)}
+            </span>
+          )}
+          <span className="spacer" />
+          {overdue && <span className="dot action" title="Task overdue" />}
+          <span className="faint">{tank.setupDate ? `since ${fmtShortDate(tank.setupDate)}` : ''}</span>
+        </div>
       </div>
-      <div className="row" style={{ padding: '10px 14px 12px', gap: 8 }}>
-        <span className="faint">{CYCLE_LABEL[info.stage.stage]}</span>
-        {last?.ammonia != null && (
-          <span className="muted" style={{ fontSize: 12.5 }}>
-            NH₃/NH₄⁺ {fmtNum(last.ammonia, 2)}
-          </span>
-        )}
-        {last?.nitrate != null && (
-          <span className="muted" style={{ fontSize: 12.5 }}>
-            NO₃ {fmtNum(last.nitrate, 0)}
-          </span>
-        )}
+      <div className="tankcard-foot">
+        <span className="faint">{rem.test.lastIso ? `last test ${fmtShortDate(rem.test.lastIso)}` : 'no tests yet'}</span>
         <span className="spacer" />
-        {overdue && <span className="dot action" title="Task overdue" />}
-        <span className="faint">{tank.setupDate ? `since ${fmtShortDate(tank.setupDate)}` : ''}</span>
+        <button className="btn qlog-btn" type="button" onClick={() => setTesting(true)}>
+          Quick test
+        </button>
       </div>
-    </button>
+      {testing && <TestSheet tankId={tank.id} onClose={() => setTesting(false)} />}
+    </div>
   )
 }
 
