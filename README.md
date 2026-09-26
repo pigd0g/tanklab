@@ -1,32 +1,30 @@
-# React + TypeScript + Vite
+# TankLab 🐠
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Local-first aquarium tracking, built with React + Vite. All data stays in your browser's
+localStorage — no accounts, no cloud. Optimized for mobile (Android Chrome).
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Multiple tanks, each with photo (auto-resized to ~720px JPEG), volume, setup date, source water
+- Water tests — log only what you measured (ammonia NH₃/NH₄⁺, nitrite, nitrate, phosphate, pH, water/room temp)
+- Water changes, maintenance, feeding and livestock logs with date & time captured automatically
+- Tank status (Good / Watch / Action needed), trends per metric, and nitrogen-cycle progress
+- Estimated free NH₃ from total ammonia + pH + temperature (Emerson equation)
+- Weekly water-change and testing reminders (in-app), feeding plan
+- Charts (ECharts): toxins, nitrate & phosphate, pH & temperature across 7/30/90 days or all
+- Export/import JSON backups in Settings (merge or replace), metric ⇄ imperial units
 
-## React Compiler
+## Dev
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+    npm install
+    npm run dev      # local dev server
+    npm run build    # production build
+    npm run preview  # serve the build
 
-## Expanding the Oxlint configuration
+Tip: open the app with `#demo` in the URL to seed two demo tanks (only works while storage is
+empty) — handy for trying the UI before adding real data.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Deploy
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Build and host `dist/` anywhere static (GitHub Pages, Netlify). The app uses hash routing, so no
+server config is needed.
