@@ -5,7 +5,7 @@ import { useStore } from '../lib/store'
 import { nowLocalValue, toIso, isoToLocalValue } from '../lib/utils'
 import { Sheet } from '../components/ui'
 
-type SheetProps = { tankId: string; edit?: Entry; onClose: () => void; onDelete?: () => void }
+type SheetProps = { tankId: string; edit?: Entry; onClose: () => void; onDelete?: () => void; preset?: { maintenanceType?: MaintenanceType; note?: string } }
 
 const saveBtn = 'btn btn-primary btn-block'
 
@@ -186,11 +186,11 @@ export function WaterChangeSheet({ tankId, edit, onClose, onDelete }: SheetProps
   )
 }
 
-export function MaintenanceSheet({ tankId, edit, onClose, onDelete }: SheetProps) {
+export function MaintenanceSheet({ tankId, edit, onClose, onDelete, preset }: SheetProps) {
   const save = useEntrySave(tankId, onClose, edit)
   const [dt, setDt] = useState(edit ? isoToLocalValue(edit.date) : nowLocalValue())
-  const [type, setType] = useState<MaintenanceType>(edit?.maintenanceType ?? 'filterClean')
-  const [note, setNote] = useState(edit?.note ?? '')
+  const [type, setType] = useState<MaintenanceType>(edit?.maintenanceType ?? preset?.maintenanceType ?? 'filterClean')
+  const [note, setNote] = useState(edit?.note ?? preset?.note ?? '')
   return (
     <Sheet title={edit ? 'Edit maintenance' : 'Maintenance'} onClose={onClose}>
       <form
@@ -204,7 +204,7 @@ export function MaintenanceSheet({ tankId, edit, onClose, onDelete }: SheetProps
           <label className="f-label">What did you do?</label>
           <select value={type} onChange={(e) => setType(e.target.value as MaintenanceType)}>
             {(Object.keys(MAINTENANCE_LABELS) as MaintenanceType[])
-              .filter((k) => k !== 'waterChange')
+              .filter((k) => k !== 'waterChange' && k !== 'ammoniaDose')
               .map((k) => (
                 <option key={k} value={k}>
                   {MAINTENANCE_LABELS[k]}

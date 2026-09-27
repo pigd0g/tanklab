@@ -13,6 +13,7 @@ export function NewTankForm({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')
   const [volume, setVolume] = useState('')
   const [setup, setSetup] = useState(nowLocalValue().slice(0, 10))
+  const [established, setEstablished] = useState(false)
   const [source, setSource] = useState<SourceWater | ''>('')
   const [photo, setPhoto] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -41,6 +42,9 @@ export function NewTankForm({ onClose }: { onClose: () => void }) {
             setupDate: setup ? toIso(`${setup}T12:00`) : null,
             sourceWater: source || null,
             feedingSchedule: null,
+            established,
+            cycling: null,
+            maintenanceSchedule: [],
           })
           onClose()
           nav(`/tank/${t.id}`)
@@ -58,6 +62,18 @@ export function NewTankForm({ onClose }: { onClose: () => void }) {
             <input type="date" value={setup} onChange={(e) => setSetup(e.target.value)} />
           </div>
         </div>
+        <label className="check-row" style={{ marginTop: 12 }}>
+          <input
+            type="checkbox"
+            checked={established}
+            onChange={(e) => setEstablished(e.target.checked)}
+            style={{ width: 'auto' }}
+          />
+          <span>
+            Already established / cycled
+            <span className="faint" style={{ display: 'block' }}>For adopted tanks that are already running — skips new-tank assumptions</span>
+          </span>
+        </label>
         <div>
           <label className="f-label">Source water</label>
           <select value={source} onChange={(e) => setSource(e.target.value as SourceWater)}>
@@ -102,6 +118,7 @@ export function EditTankSheet({ tank, onClose }: { tank: Tank; onClose: () => vo
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   })
   const [source, setSource] = useState<SourceWater | ''>(tank.sourceWater ?? '')
+  const [established, setEstablished] = useState(Boolean(tank.established))
   const [photo, setPhoto] = useState<string | null | undefined>(tank.photo)
   const [busy, setBusy] = useState(false)
 
@@ -128,6 +145,7 @@ export function EditTankSheet({ tank, onClose }: { tank: Tank; onClose: () => vo
             setupDate: setup ? toIso(`${setup}T12:00`) : null,
             sourceWater: (source || null) as SourceWater | null,
             photo: photo ?? null,
+            established,
           })
           onClose()
           nav(`/tank/${tank.id}`)
@@ -145,6 +163,18 @@ export function EditTankSheet({ tank, onClose }: { tank: Tank; onClose: () => vo
             <input type="date" value={setup} onChange={(e) => setSetup(e.target.value)} />
           </div>
         </div>
+        <label className="check-row" style={{ marginTop: 12 }}>
+          <input
+            type="checkbox"
+            checked={established}
+            onChange={(e) => setEstablished(e.target.checked)}
+            style={{ width: 'auto' }}
+          />
+          <span>
+            Already established / cycled
+            <span className="faint" style={{ display: 'block' }}>For adopted tanks that are already running — skips new-tank assumptions</span>
+          </span>
+        </label>
         <div>
           <label className="f-label">Source water</label>
           <select value={source} onChange={(e) => setSource(e.target.value as SourceWater)}>

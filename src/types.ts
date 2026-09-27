@@ -20,6 +20,7 @@ export type MaintenanceType =
   | 'bacteria'
   | 'medication'
   | 'equipment'
+  | 'ammoniaDose'
   | 'other'
 
 export const MAINTENANCE_LABELS: Record<MaintenanceType, string> = {
@@ -33,10 +34,24 @@ export const MAINTENANCE_LABELS: Record<MaintenanceType, string> = {
   bacteria: 'Bacteria / starter',
   medication: 'Medication',
   equipment: 'Equipment maintenance',
+  ammoniaDose: 'Ammonia dose',
   other: 'Other',
 }
 
 export type LivestockSubtype = 'added' | 'death' | 'breeding' | 'observation'
+
+export type FishlessCycle = {
+  startedAt: string
+  dosePpm: number | null
+  completedAt: string | null
+}
+
+export type MaintScheduleItem = {
+  id: string
+  type: MaintenanceType
+  intervalDays: number
+  note?: string
+}
 
 export type Tank = {
   id: string
@@ -46,6 +61,9 @@ export type Tank = {
   setupDate: string | null
   sourceWater: SourceWater | null
   feedingSchedule: { timesPerDay: number; note?: string } | null
+  established?: boolean
+  cycling?: FishlessCycle | null
+  maintenanceSchedule?: MaintScheduleItem[]
   createdAt: string
 }
 

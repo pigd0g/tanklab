@@ -1,4 +1,18 @@
-import type { Entry, Tank } from '../types'
+import type { Entry, MaintScheduleItem, Tank } from '../types'
+import { MAINTENANCE_LABELS } from '../types'
+import { activeFishlessCycle, todayCycleTodos } from './cycleGuide'
+
+const MAINTENANCE_ACTION_LABEL: Partial<Record<MaintScheduleItem['type'], string>> = {
+  filterClean: 'Clean filter',
+  mediaReplaced: 'Replace filter media',
+  substrate: 'Clean substrate',
+  plantTrim: 'Trim plants',
+  fertiliser: 'Add fertiliser',
+  conditioner: 'Add water conditioner',
+  bacteria: 'Add bacteria starter',
+  medication: 'Dose medication',
+  equipment: 'Check equipment',
+}
 
 export type Status = 'good' | 'watch' | 'action'
 
@@ -78,15 +92,19 @@ export function metricTrend(entries: Entry[], key: 'ammonia' | 'nitrite' | 'nitr
 export function tankStatus(entries: Entry[], tank: Tank): { status: Status; reasons: string[]; latest: Latest | null } {
   const latest = latestTest(entries)
   const reasons: string[] = []
+  const cycle = activeFishlessCycle(tank.cycling)
   if (!latest) {
-    const fresh = tank.setupDate && (Date.now() - new Date(tank.setupDate).getTime()) / 86_400_000 < 45
+    const fresh = !tank.established && tank.setupDate && (Date.now() - new Date(tank.setupDate).getTime()) / 86_400_000 < 45
     return { status: fresh ? 'watch' : 'good', reasons: fresh ? ['New tank, no tests yet'] : [], latest }
   }
-  const cycling = latest.ammonia !== null || (latest.nitrite ?? 0) > 0 || latest.nitrate === null
+  const cycling = cycle !== null || latest.ammonia !== null || (latest.nitrite ?? 0) > 0 || latest.nitrate === null
   if (isNum(latest.ammonia)) {
-    const threshold = cycling ? 1.0 : 0.25
-    if (latest.ammonia >= threshold) reasons.push(`Ammonia ${latest.ammonia} ppm`)
-    else if (latest.ammonia > 0.1) reasons.push('Trace ammonia')
+    if (cycle && latest.ammonia > 5) reasons.push(`Ammonia very high (${latest.ammonia} ppm) — partial water change`)
+    else {
+      const threshold = cycling ? 1.0 : 0.25
+      if (latest.ammonia >= threshold) reasons.push(`Ammonia ${latest.ammonia} ppm`)
+      else if (latest.ammonia > 0.1) reasons.push('Trace ammonia')
+    }
   }
   if (isNum(latest.nitrite)) {
     const threshold = cycling ? 2.0 : 0.25
@@ -104,38 +122,40 @@ export function tankStatus(entries: Entry[], tank: Tank): { status: Status; reas
   return { status, reasons, latest }
 }
 
-export type CycleStage = 'cycling' | 'establishing' | 'cycled' | 'stable'
+export type CycleStage = 'cycling' | 'establishing' | 'cycled' | 'stable' | 'unknown'
 
 export const CYCLE_LABEL: Record<CycleStage, string> = {
   cycling: 'Cycling',
   establishing: 'Establishing',
   cycled: 'Cycled',
   stable: 'Stable',
+  unknown: 'Established?',
 }
 
 export function cycleStage(entries: Entry[], tank: Tank): { stage: CycleStage; progress: number } {
-  const ageDays = tank.setupDate ? (Date.now() - new Date(tank.setupDate).getTime()) / 86_400_000 : null
   const tests = entries.filter((e) => e.kind === 'test').sort((a, b) => a.date.localeCompare(b.date))
-  if (!tests.length || ageDays === null) {
-    return { stage: 'cycling', progress: tests.length ? 0.05 : 0 }
-  }
+  if (tank.established) return { stage: 'cycled', progress: 1 }
+  if (!tests.length) return { stage: 'unknown', progress: 0 }
   const recent = tests.slice(-5)
   const maxAmmo = Math.max(...recent.map((e) => e.ammonia ?? 0))
   const maxNit = Math.max(...recent.map((e) => e.nitrite ?? 0))
   const last = tests[tests.length - 1]
+  const prev = tests.length >= 2 ? tests[tests.length - 2] : null
   const hasTests = (k: 'ammonia' | 'nitrite' | 'nitrate') => recent.some((e) => isNum(e[k]))
   const nitrateSeen = hasTests('nitrate')
 
   if (maxAmmo > 0.5 || maxNit > 0.5) {
-    return { stage: 'cycling', progress: Math.min(0.45, ageDays / 45 + 0.1) }
+    return { stage: 'cycling', progress: 0.3 }
   }
-  if (ageDays < 21 || !nitrateSeen || !hasTests('ammonia')) {
-    return { stage: 'establishing', progress: Math.min(0.75, 0.3 + ageDays / 60) }
-  }
-  if ((last.ammonia ?? 0) <= 0.25 && (last.nitrite ?? 0) <= 0.25 && (last.nitrate ?? 0) <= 10 && ageDays >= 60) {
+  const lastClean = (last.ammonia ?? 0) <= 0.25 && (last.nitrite ?? 0) <= 0.25
+  const prevClean = prev ? (prev.ammonia ?? 0) <= 0.25 && (prev.nitrite ?? 0) <= 0.25 : false
+  if (lastClean && prevClean && (last.nitrate ?? 0) <= 10 && hasTests('ammonia') && nitrateSeen) {
     return { stage: 'stable', progress: 1 }
   }
-  return { stage: 'cycled', progress: 0.85 }
+  if (lastClean && nitrateSeen && hasTests('ammonia')) {
+    return { stage: 'cycled', progress: 0.85 }
+  }
+  return { stage: 'establishing', progress: 0.45 }
 }
 
 export type Reminders = {
@@ -151,8 +171,12 @@ export function reminders(entries: Entry[], tank: Tank): Reminders {
   const wcDueMs = lastWc ? new Date(lastWc).getTime() + 7 * 86_400_000 : null
   const tests = entries.filter((e) => e.kind === 'test').sort((a, b) => b.date.localeCompare(a.date))
   const lastTest = tests[0]?.date ?? null
-  const cyclingish = !lastTest || tests.slice(0, 3).some((t) => (t.ammonia ?? 0) > 0.25 || (t.nitrite ?? 0) > 0.25) || (tank.setupDate && now - new Date(tank.setupDate).getTime() < 45 * 86_400_000)
-  const gap = cyclingish ? 2 : 7
+  const cycle = activeFishlessCycle(tank.cycling)
+  const cyclingish =
+    cycle !== null ||
+    (!lastTest && !tank.established && (!tank.setupDate || now - new Date(tank.setupDate).getTime() < 45 * 86_400_000)) ||
+    tests.slice(0, 3).some((t) => (t.ammonia ?? 0) > 0.25 || (t.nitrite ?? 0) > 0.25)
+  const gap = cycle ? 1 : cyclingish ? 2 : 7
   const testDueMs = lastTest ? new Date(lastTest).getTime() + gap * 86_400_000 : null
   const times = tank.feedingSchedule?.timesPerDay ?? 0
   const todaysFeedings = entries.filter((e) => e.kind === 'feeding' && sameDay(e.date, now)).length
@@ -173,8 +197,64 @@ export function reminders(entries: Entry[], tank: Tank): Reminders {
   }
 }
 
+export type ScheduleDue = {
+  item: MaintScheduleItem
+  lastIso: string | null
+  dueIso: string | null
+  due: boolean
+  overdue: boolean
+}
+
+export function maintenanceDue(entries: Entry[], tank: Tank): ScheduleDue[] {
+  const now = Date.now()
+  return (tank.maintenanceSchedule ?? []).map((item) => {
+    const last = entries
+      .filter((e) => e.kind === 'maintenance' && e.maintenanceType === item.type)
+      .sort((a, b) => b.date.localeCompare(a.date))[0]
+    const dueMs = last ? new Date(last.date).getTime() + item.intervalDays * 86_400_000 : null
+    return {
+      item,
+      lastIso: last?.date ?? null,
+      dueIso: dueMs !== null ? new Date(dueMs).toISOString() : null,
+      due: dueMs !== null && dueMs - now < 12 * 3_600_000,
+      overdue: dueMs !== null && dueMs < now,
+    }
+  })
+}
+
+export type TankAction = { key: string; label: string; due: boolean; overdue: boolean; dueIso: string | null }
+
+export function tankActions(entries: Entry[], tank: Tank): TankAction[] {
+  const rem = reminders(entries, tank)
+  const actions: TankAction[] = []
+  if (rem.waterChange.overdue || rem.waterChange.due) {
+    actions.push({ key: 'waterChange', label: 'Water change', due: rem.waterChange.due, overdue: rem.waterChange.overdue, dueIso: rem.waterChange.dueIso })
+  }
+  if (rem.test.overdue || rem.test.due) {
+    actions.push({ key: 'test', label: 'Water test', due: rem.test.due, overdue: rem.test.overdue, dueIso: rem.test.dueIso })
+  }
+  for (const s of maintenanceDue(entries, tank)) {
+    if (s.overdue || s.due) {
+      actions.push({ key: `sched-${s.item.id}`, label: MAINTENANCE_ACTION_LABEL[s.item.type] ?? MAINTENANCE_LABELS[s.item.type], due: s.due, overdue: s.overdue, dueIso: s.dueIso })
+    }
+  }
+  const cycle = activeFishlessCycle(tank.cycling)
+  if (cycle) {
+    const todos = todayCycleTodos(entries, tank)
+    if (todos?.doseToday) actions.push({ key: 'cycle-dose', label: `Cycle day ${todos.day}: ammonia dose`, due: true, overdue: false, dueIso: null })
+    if (todos?.testToday) actions.push({ key: 'cycle-test', label: `Cycle day ${todos.day}: water test`, due: true, overdue: true, dueIso: null })
+  }
+  return actions
+}
+
 function sameDay(iso: string, nowMs: number) {
   const a = new Date(iso)
   const b = new Date(nowMs)
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+export function sameLocalDay(aIso: string, bIso: string) {
+  const a = new Date(aIso)
+  const b = new Date(bIso)
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }

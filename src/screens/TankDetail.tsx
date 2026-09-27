@@ -9,6 +9,9 @@ import { fmtDateTime, fmtDaysAgo, fmtNum, fmtTemp, fmtVolume } from '../lib/util
 import { Segmented, StatusDot, TrendArrow, useNow } from '../components/ui'
 import { TestSheet, WaterChangeSheet, MaintenanceSheet, FeedingSheet, LivestockSheet } from './EntrySheets'
 import { EditTankSheet } from './TankForm'
+import Cycle, { StartCycleButton, StartCycleSheet } from './Cycle'
+import { activeFishlessCycle } from '../lib/cycleGuide'
+import { QuickLogMenu } from '../components/QuickLogMenu'
 const Charts = lazy(() => import('./Charts'))
 import Care from './Care'
 import LogView from './LogView'
@@ -31,6 +34,7 @@ function Overview(props: { entries: Entry[]; tank: import('../types').Tank; onOp
   const { status, reasons, latest } = tankStatus(entries, tank)
   const stage = cycleStage(entries, tank)
   const rem = reminders(entries, tank)
+  const cycleActive = activeFishlessCycle(tank.cycling) !== null
   const nh3 =
     latest && latest.ammonia != null && latest.ph != null && latest.waterTemp != null
       ? freeAmmonia(latest.ammonia, latest.ph, latest.waterTemp)
@@ -50,20 +54,29 @@ function Overview(props: { entries: Entry[]; tank: import('../types').Tank; onOp
         {reasons.length > 0 && (
           <div className="muted" style={{ marginTop: 8 }}>{reasons.join(' · ')}</div>
         )}
-        <div style={{ marginTop: 12, height: 6, borderRadius: 3, background: 'var(--bg)', overflow: 'hidden' }}>
-          <div
-            style={{
-              width: `${Math.round(stage.progress * 100)}%`,
-              height: '100%',
-              background: 'linear-gradient(90deg, var(--accent-dim), var(--accent))',
-              borderRadius: 3,
-              transition: 'width 0.4s',
-            }}
-          />
-        </div>
-        <div className="faint" style={{ marginTop: 5 }}>
-          {CYCLE_LABEL[stage.stage]} · {Math.round(stage.progress * 100)}%
-        </div>
+        {stage.stage !== 'unknown' && (
+          <>
+            <div style={{ marginTop: 12, height: 6, borderRadius: 3, background: 'var(--bg)', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${Math.round(stage.progress * 100)}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, var(--accent-dim), var(--accent))',
+                  borderRadius: 3,
+                  transition: 'width 0.4s',
+                }}
+              />
+            </div>
+            <div className="faint" style={{ marginTop: 5 }}>
+              {CYCLE_LABEL[stage.stage]} · {Math.round(stage.progress * 100)}%
+            </div>
+          </>
+        )}
+        {!cycleActive && !tank.established && (
+          <div style={{ marginTop: 12 }}>
+            <StartCycleButton tank={tank} />
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -151,12 +164,13 @@ export default function TankDetail() {
   const nav = useNavigate()
   const { getTank, tankEntries, units } = useStore()
   const tank = id ? getTank(id) : undefined
-  const [tab, setTab] = useState<'overview' | 'charts' | 'log' | 'care'>('overview')
-  const [sheet, setSheet] = useState<null | 'test' | 'waterChange' | 'maintenance' | 'feeding' | 'livestock'>(null)
+  const [tab, setTab] = useState<'overview' | 'cycle' | 'charts' | 'log' | 'care'>('overview')
+  const [sheet, setSheet] = useState<null | 'test' | 'waterChange' | 'maintenance' | 'feeding' | 'livestock' | 'cycle'>(null)
   const [editing, setEditing] = useState(false)
   useNow()
 
   const entries = useMemo(() => (tank ? tankEntries(tank.id) : []), [tank, tankEntries])
+  const cycleActive = tank ? activeFishlessCycle(tank.cycling) !== null : false
 
   if (!tank) {
     return (
@@ -203,6 +217,7 @@ export default function TankDetail() {
         onChange={setTab}
         options={[
           { value: 'overview', label: 'Overview' },
+          ...(cycleActive ? [{ value: 'cycle' as const, label: 'Cycle' }] : []),
           { value: 'charts', label: 'Charts' },
           { value: 'log', label: 'Log' },
           { value: 'care', label: 'Care' },
@@ -210,6 +225,7 @@ export default function TankDetail() {
       />
 
       {tab === 'overview' && <Overview entries={entries} tank={tank} onOpen={setSheet} />}
+      {tab === 'cycle' && cycleActive && <Cycle entries={entries} tank={tank} />}
       {tab === 'charts' && (
           <Suspense fallback={<div className="muted" style={{ padding: 20 }}>Loading charts…</div>}>
             <Charts entries={entries} tank={tank} />
@@ -218,13 +234,24 @@ export default function TankDetail() {
       {tab === 'log' && <LogView entries={entries} tank={tank} />}
       {tab === 'care' && <Care entries={entries} tank={tank} />}
 
-      <QuickLog onPick={setSheet} />
+      <QuickLogMenu
+        items={[
+          { key: 'test', icon: '🧪', label: 'Test' },
+          { key: 'waterChange', icon: '💧', label: 'Water change' },
+          { key: 'feeding', icon: '🍤', label: 'Fed' },
+          { key: 'maintenance', icon: '🔧', label: 'Maintenance' },
+          { key: 'livestock', icon: '🐟', label: 'Livestock' },
+          { key: 'cycle', icon: '🦠', label: 'Start fishless cycle', hide: cycleActive || Boolean(tank.established) },
+        ].filter((it) => !it.hide)}
+        onPick={(key) => setSheet(key as typeof sheet)}
+      />
 
       {sheet === 'test' && <TestSheet tankId={tank.id} onClose={() => setSheet(null)} />}
       {sheet === 'waterChange' && <WaterChangeSheet tankId={tank.id} onClose={() => setSheet(null)} />}
       {sheet === 'maintenance' && <MaintenanceSheet tankId={tank.id} onClose={() => setSheet(null)} />}
       {sheet === 'feeding' && <FeedingSheet tankId={tank.id} onClose={() => setSheet(null)} />}
       {sheet === 'livestock' && <LivestockSheet tankId={tank.id} onClose={() => setSheet(null)} />}
+      {sheet === 'cycle' && <StartCycleSheet tank={tank} onClose={() => setSheet(null)} />}
       {editing && <EditTankSheet tank={tank} onClose={() => setEditing(false)} />}
     </main>
   )
@@ -244,57 +271,6 @@ function QuickActions({ onOpen }: { onOpen: (s: 'test' | 'waterChange' | 'mainte
       </button>
       <button className="btn" type="button" onClick={() => onOpen('livestock')}>
         Livestock
-      </button>
-    </div>
-  )
-}
-
-function QuickLog({ onPick }: { onPick: (s: 'test' | 'waterChange' | 'maintenance' | 'feeding' | 'livestock') => void }) {
-  const [open, setOpen] = useState(false)
-  const items: { key: 'test' | 'waterChange' | 'maintenance' | 'feeding' | 'livestock'; icon: string; label: string }[] = [
-    { key: 'test', icon: '🧪', label: 'Test' },
-    { key: 'waterChange', icon: '💧', label: 'Water change' },
-    { key: 'feeding', icon: '🍤', label: 'Fed' },
-    { key: 'maintenance', icon: '🔧', label: 'Maintenance' },
-    { key: 'livestock', icon: '🐟', label: 'Livestock' },
-  ]
-  return (
-    <div style={{ position: 'fixed', right: 18, bottom: 'calc(var(--tabbar-h) + 18px)', zIndex: 30, display: 'grid', gap: 8, justifyItems: 'center' }}>
-      {open && (
-        <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: -1 }} onClick={() => setOpen(false)} />
-          {items.map((it, i) => (
-            <button
-              key={it.key}
-              type="button"
-              className="btn"
-              style={{
-                margin: 0,
-                borderRadius: 999,
-                padding: '10px 16px',
-                background: 'var(--bg-card-hi)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-                animation: `slideUp 0.18s ${i * 0.03}s cubic-bezier(0.2,0.8,0.2,1) both`,
-              }}
-              onClick={() => {
-                setOpen(false)
-                onPick(it.key)
-              }}
-            >
-              <span>{it.icon}</span> {it.label}
-            </button>
-          ))}
-        </>
-      )}
-      <button
-        type="button"
-        className="tab-center"
-        style={{ margin: 0, width: 54, height: 54, fontSize: 28, transform: open ? 'rotate(45deg)' : undefined, transition: 'transform 0.18s' }}
-        aria-label="Quick log"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        +
       </button>
     </div>
   )

@@ -1,6 +1,6 @@
 import type { Tank } from '../types'
 import { useStore } from '../lib/store'
-import { tankStatus, cycleStage, reminders, CYCLE_LABEL } from '../lib/derive'
+import { tankStatus, cycleStage, reminders, tankActions, CYCLE_LABEL } from '../lib/derive'
 import { fmtVolume, fmtTemp, fmtShortDate, fmtNum } from '../lib/utils'
 import { StatusDot, useNow } from '../components/ui'
 import { LogoTile } from '../components/icons'
@@ -14,6 +14,7 @@ type CardInfo = {
   status: ReturnType<typeof tankStatus>
   stage: ReturnType<typeof cycleStage>
   rem: ReturnType<typeof reminders>
+  actions: ReturnType<typeof tankActions>
 }
 
 function TankCard({ info }: { info: CardInfo }) {
@@ -68,6 +69,9 @@ function TankCard({ info }: { info: CardInfo }) {
         </div>
         <div className="row" style={{ padding: '10px 14px', gap: 8 }}>
           <span className="faint">{CYCLE_LABEL[info.stage.stage]}</span>
+          {info.actions.some((a) => a.key.startsWith('cycle-')) && (
+            <span className="cycle-badge">Cycle</span>
+          )}
           {last?.ammonia != null && (
             <span className="muted" style={{ fontSize: 12.5 }}>
               NH₃/NH₄⁺ {fmtNum(last.ammonia, 2)}
@@ -107,12 +111,13 @@ export default function Dashboard() {
       status: tankStatus(entries, tank),
       stage: cycleStage(entries, tank),
       rem: reminders(entries, tank),
+      actions: tankActions(entries, tank),
     }
   })
 
-  const attention = infos
-    .filter((i) => i.status.status !== 'good' || i.rem.waterChange.overdue || i.rem.test.overdue)
-    .map((i) => i.tank.name)
+  const attention = infos.flatMap((i) =>
+    i.actions.map((a) => ({ tank: i.tank.name, ...a })),
+  )
 
   return (
     <main className="app page">
@@ -141,7 +146,18 @@ export default function Dashboard() {
             <StatusDot status="watch" />
             <strong style={{ fontSize: 13.5 }}>Needs attention</strong>
           </div>
-          <div className="muted" style={{ marginTop: 4 }}>{attention.join(', ')}</div>
+          <div style={{ marginTop: 6 }}>
+            {attention.map((a) => (
+              <div key={a.tank + a.key} className="row" style={{ padding: '3px 0' }}>
+                <span className="muted" style={{ fontSize: 13 }}>{a.tank}</span>
+                <span style={{ fontSize: 13 }}>{a.label}</span>
+                <span className="spacer" />
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: a.overdue ? 'var(--bad)' : 'var(--warn)' }}>
+                  {a.overdue ? 'Overdue' : 'Due'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
