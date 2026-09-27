@@ -12,6 +12,7 @@ import { EditTankSheet } from './TankForm'
 import Cycle, { StartCycleButton, StartCycleSheet } from './Cycle'
 import { activeFishlessCycle } from '../lib/cycleGuide'
 import { QuickLogMenu } from '../components/QuickLogMenu'
+import { buildTankMarkdown, copyText } from '../lib/tankExport'
 const Charts = lazy(() => import('./Charts'))
 import Care from './Care'
 import LogView from './LogView'
@@ -167,6 +168,7 @@ export default function TankDetail() {
   const [tab, setTab] = useState<'overview' | 'cycle' | 'charts' | 'log' | 'care'>('overview')
   const [sheet, setSheet] = useState<null | 'test' | 'waterChange' | 'maintenance' | 'feeding' | 'livestock' | 'cycle'>(null)
   const [editing, setEditing] = useState(false)
+  const [copied, setCopied] = useState<null | 'ok' | 'fail'>(null)
   useNow()
 
   const entries = useMemo(() => (tank ? tankEntries(tank.id) : []), [tank, tankEntries])
@@ -181,6 +183,17 @@ export default function TankDetail() {
         </div>
       </main>
     )
+  }
+
+  const onMenuPick = (key: string) => {
+    if (key === 'aiPrompt') {
+      copyText(buildTankMarkdown(tank, entries, units)).then((ok) => {
+        setCopied(ok ? 'ok' : 'fail')
+        window.setTimeout(() => setCopied(null), 2000)
+      })
+      return
+    }
+    setSheet(key as typeof sheet)
   }
 
   return (
@@ -242,9 +255,31 @@ export default function TankDetail() {
           { key: 'maintenance', icon: '🔧', label: 'Maintenance' },
           { key: 'livestock', icon: '🐟', label: 'Livestock' },
           { key: 'cycle', icon: '🦠', label: 'Start fishless cycle', hide: cycleActive || Boolean(tank.established) },
+          { key: 'aiPrompt', icon: '🤖', label: 'Copy AI prompt' },
         ].filter((it) => !it.hide)}
-        onPick={(key) => setSheet(key as typeof sheet)}
+        onPick={onMenuPick}
       />
+
+      {copied && (
+        <div
+          className="muted"
+          style={{
+            position: 'fixed',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            bottom: 'calc(var(--tabbar-h) + 10px)',
+            zIndex: 31,
+            background: 'var(--bg-card-hi)',
+            border: '1px solid var(--line-soft)',
+            borderRadius: 999,
+            padding: '8px 16px',
+            fontSize: 13.5,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          }}
+        >
+          {copied === 'ok' ? 'Tank data copied as markdown ✓' : 'Copy failed — try again'}
+        </div>
+      )}
 
       {sheet === 'test' && <TestSheet tankId={tank.id} onClose={() => setSheet(null)} />}
       {sheet === 'waterChange' && <WaterChangeSheet tankId={tank.id} onClose={() => setSheet(null)} />}
