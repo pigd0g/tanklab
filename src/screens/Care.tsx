@@ -55,6 +55,7 @@ function FeedingPlan({ tank, onClose }: { tank: Tank; onClose: () => void }) {
 const SCHEDULE_PRESETS: { type: MaintenanceType; intervalDays: number }[] = [
   { type: 'filterClean', intervalDays: 14 },
   { type: 'substrate', intervalDays: 28 },
+  { type: 'rootTabs', intervalDays: 30 },
   { type: 'equipment', intervalDays: 90 },
 ]
 

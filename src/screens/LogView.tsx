@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Entry, Tank } from '../types'
 import { MAINTENANCE_LABELS, SOURCE_WATER_LABELS } from '../types'
 import { useStore } from '../lib/store'
-import { fmtNum } from '../lib/utils'
+import { fmtNum, isoToLocalValue } from '../lib/utils'
 import { TestSheet, WaterChangeSheet, MaintenanceSheet, FeedingSheet, LivestockSheet } from './EntrySheets'
 
 type Filter = 'all' | Entry['kind']
@@ -62,7 +62,7 @@ export default function LogView({ entries, tank }: { entries: Entry[]; tank: Tan
   const filtered = entries.filter((e) => filter === 'all' || e.kind === filter)
   const groups = new Map<string, Entry[]>()
   for (const e of filtered) {
-    const day = e.date.slice(0, 10)
+    const day = isoToLocalValue(e.date).slice(0, 10)
     const list = groups.get(day) ?? []
     list.push(e)
     groups.set(day, list)
@@ -95,7 +95,7 @@ export default function LogView({ entries, tank }: { entries: Entry[]; tank: Tan
                 <span>{kindIcon[e.kind]}</span>
                 <strong style={{ fontSize: 14 }}>{describe(e)}</strong>
                 <span className="spacer" />
-                <span className="faint">{e.date.slice(11, 16)}</span>
+                <span className="faint">{isoToLocalValue(e.date).slice(11, 16)}</span>
               </div>
               {e.note && <div className="muted" style={{ marginTop: 5, fontSize: 13 }}>{e.note}</div>}
             </button>

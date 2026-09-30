@@ -191,8 +191,9 @@ export function MaintenanceSheet({ tankId, edit, onClose, onDelete, preset }: Sh
   const [dt, setDt] = useState(edit ? isoToLocalValue(edit.date) : nowLocalValue())
   const [type, setType] = useState<MaintenanceType>(edit?.maintenanceType ?? preset?.maintenanceType ?? 'filterClean')
   const [note, setNote] = useState(edit?.note ?? preset?.note ?? '')
+  const isDose = type === 'ammoniaDose'
   return (
-    <Sheet title={edit ? 'Edit maintenance' : 'Maintenance'} onClose={onClose}>
+    <Sheet title={isDose ? (edit ? 'Edit ammonia dose' : 'Log ammonia dose') : edit ? 'Edit maintenance' : 'Maintenance'} onClose={onClose}>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -204,7 +205,7 @@ export function MaintenanceSheet({ tankId, edit, onClose, onDelete, preset }: Sh
           <label className="f-label">What did you do?</label>
           <select value={type} onChange={(e) => setType(e.target.value as MaintenanceType)}>
             {(Object.keys(MAINTENANCE_LABELS) as MaintenanceType[])
-              .filter((k) => k !== 'waterChange' && k !== 'ammoniaDose')
+              .filter((k) => k !== 'waterChange')
               .map((k) => (
                 <option key={k} value={k}>
                   {MAINTENANCE_LABELS[k]}

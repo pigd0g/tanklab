@@ -8,6 +8,7 @@ const MAINTENANCE_ACTION_LABEL: Partial<Record<MaintScheduleItem['type'], string
   substrate: 'Clean substrate',
   plantTrim: 'Trim plants',
   fertiliser: 'Add fertiliser',
+  rootTabs: 'Replace root tabs',
   conditioner: 'Add water conditioner',
   bacteria: 'Add bacteria starter',
   medication: 'Dose medication',

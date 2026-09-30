@@ -16,6 +16,7 @@ export type MaintenanceType =
   | 'substrate'
   | 'plantTrim'
   | 'fertiliser'
+  | 'rootTabs'
   | 'conditioner'
   | 'bacteria'
   | 'medication'
@@ -30,6 +31,7 @@ export const MAINTENANCE_LABELS: Record<MaintenanceType, string> = {
   substrate: 'Gravel / substrate clean',
   plantTrim: 'Plant trimming',
   fertiliser: 'Fertiliser added',
+  rootTabs: 'Root tabs replaced',
   conditioner: 'Water conditioner',
   bacteria: 'Bacteria / starter',
   medication: 'Medication',
