@@ -9,7 +9,7 @@ import { fmtDateTime, fmtDaysAgo, fmtNum, fmtTemp, fmtVolume } from '../lib/util
 import { Segmented, StatusDot, TrendArrow, useNow } from '../components/ui'
 import { TestSheet, WaterChangeSheet, MaintenanceSheet, FeedingSheet, LivestockSheet } from './EntrySheets'
 import { EditTankSheet } from './TankForm'
-import Cycle, { StartCycleButton, StartCycleSheet } from './Cycle'
+import Cycle, { StartCycleSheet } from './Cycle'
 import { activeFishlessCycle } from '../lib/cycleGuide'
 import { QuickLogMenu } from '../components/QuickLogMenu'
 import { buildTankMarkdown, copyText } from '../lib/tankExport'
@@ -34,8 +34,7 @@ function Overview(props: { entries: Entry[]; tank: import('../types').Tank; onOp
   const now = useNow()
   const { status, reasons, latest } = tankStatus(entries, tank)
   const stage = cycleStage(entries, tank)
-  const rem = reminders(entries, tank)
-  const cycleActive = activeFishlessCycle(tank.cycling) !== null
+const rem = reminders(entries, tank)
   const nh3 =
     latest && latest.ammonia != null && latest.ph != null && latest.waterTemp != null
       ? freeAmmonia(latest.ammonia, latest.ph, latest.waterTemp)
@@ -72,11 +71,6 @@ function Overview(props: { entries: Entry[]; tank: import('../types').Tank; onOp
               {CYCLE_LABEL[stage.stage]} · {Math.round(stage.progress * 100)}%
             </div>
           </>
-        )}
-        {!cycleActive && !tank.established && (
-          <div style={{ marginTop: 12 }}>
-            <StartCycleButton tank={tank} />
-          </div>
         )}
       </div>
 
