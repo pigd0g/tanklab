@@ -138,11 +138,14 @@ export default function Cycle({ entries, tank }: { entries: Entry[]; tank: Tank 
           <span className="faint">{DAILY_CYCLE_TIP}</span>
         </div>
         <div className="row" style={{ padding: '8px 0', borderBottom: '1px solid var(--line-soft)' }}>
-          <span>{todos.doseToday ? '○' : '✓'} Dose ammonia ({todos.dosePpm != null ? `${fmtNum(todos.dosePpm)} ppm target` : 'half dose as needed'})</span>
+          <span>
+            {todos.doseToday ? '○' : '✓'} Dose ammonia
+            {todos.doseToday
+              ? ` (optional — only if ammonia reads low)`
+              : ` (${todos.dosePpm != null ? `${fmtNum(todos.dosePpm)} ppm target` : 'half dose as needed'})`}
+          </span>
           <span className="spacer" />
-          {todos.doseToday && (
-            <MaintenanceSheetButton tankId={tank.id} dosePpm={todos.dosePpm} />
-          )}
+          <MaintenanceSheetButton tankId={tank.id} dosePpm={todos.dosePpm} />
         </div>
         <div className="row" style={{ padding: '8px 0' }}>
           <span>{todos.testToday ? '○' : '✓'} Test ammonia, nitrite, nitrate</span>

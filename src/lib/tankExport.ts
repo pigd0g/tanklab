@@ -96,7 +96,7 @@ export function buildTankMarkdown(tank: Tank, entries: Entry[], units: Units): s
       if (todos) {
         out.push(`- Current day: ${todos.day}`)
         out.push(`- Current phase: ${CYCLE_PHASE_LABEL[todos.phase.phase]}`)
-        out.push(`- Ammonia dose due today: ${todos.doseToday ? 'yes' : 'no'}`)
+        out.push(`- Ammonia dosed today: ${todos.doseToday ? 'no' : 'yes'}`)
         out.push(`- Water test due today: ${todos.testToday ? 'yes' : 'no'}`)
         for (const w of todos.warnings) out.push(`- Warning: ${w}`)
       }

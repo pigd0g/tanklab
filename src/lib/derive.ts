@@ -242,7 +242,8 @@ export function tankActions(entries: Entry[], tank: Tank): TankAction[] {
   const cycle = activeFishlessCycle(tank.cycling)
   if (cycle) {
     const todos = todayCycleTodos(entries, tank)
-    if (todos?.doseToday) actions.push({ key: 'cycle-dose', label: `Cycle day ${todos.day}: ammonia dose`, due: true, overdue: false, dueIso: null })
+    // Ammonia dosing is optional day-to-day (only a data-driven starvation warning on the cycle screen),
+    // so it never appears in "Needs attention"; the daily test is the mandatory item.
     if (todos?.testToday) actions.push({ key: 'cycle-test', label: `Cycle day ${todos.day}: water test`, due: true, overdue: true, dueIso: null })
   }
   return actions
